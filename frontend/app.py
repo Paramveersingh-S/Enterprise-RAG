@@ -54,59 +54,124 @@ with st.sidebar:
                 st.error(f"Failed to connect to API: {e}")
 
 
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+from neo4j import GraphDatabase
+from pyvis.network import Network
+import streamlit.components.v1 as components
 
-# React to user input
-if prompt := st.chat_input("What are the key terms mentioned in the document?"):
-    # Display user message in chat message container
-    st.chat_message("user").markdown(prompt)
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Setup Tabs
+tab_chat, tab_graph = st.tabs(["💬 Chatbot", "🕸️ Knowledge Graph"])
 
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        
-        try:
-            with st.spinner("Searching Knowledge Graph & Vector DB..."):
-                response = requests.post(
-                    f"{API_URL}/query_stream",
-                    json={"query": prompt},
-                    stream=True,
-                    timeout=60
-                )
+with tab_chat:
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # React to user input
+    if prompt := st.chat_input("What are the key terms mentioned in the document?"):
+        # Display user message in chat message container
+        st.chat_message("user").markdown(prompt)
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            
+            try:
+                with st.spinner("Searching Knowledge Graph & Vector DB..."):
+                    response = requests.post(
+                        f"{API_URL}/query_stream",
+                        json={"query": prompt},
+                        stream=True,
+                        timeout=60
+                    )
+                    
+                if response.status_code == 200:
+                    answer = ""
+                    metrics_html = ""
+                    
+                    # Streamlit component to update the text as it streams
+                    for line in response.iter_lines():
+                        if line:
+                            data = json.loads(line)
+                            if data.get("type") == "token":
+                                answer += data["content"]
+                                message_placeholder.markdown(answer + "▌")
+                            elif data.get("type") == "metrics":
+                                # Final stream payload contains metrics
+                                relevance = data.get("relevance_score", 0.0)
+                                hallucination = data.get("hallucination_score", 0.0)
+                                sources = data.get("sources", [])
+                                
+                                metrics_md = f"\n\n---\n**Metrics:**\n"
+                                metrics_md += f"- Relevance Score: `{relevance:.2f}`\n"
+                                metrics_md += f"- Hallucination Score: `{hallucination:.2f}`\n"
+                                if sources:
+                                    metrics_md += f"- Sources: {', '.join([f'`{s[:8]}...`' for s in sources])}\n"
+                                
+                                # Final output without the cursor
+                                message_placeholder.markdown(answer + metrics_md)
+                                st.session_state.messages.append({"role": "assistant", "content": answer + metrics_md})
+                            elif data.get("type") == "error":
+                                st.error(f"Streaming Error: {data.get('content')}")
+                else:
+                    st.error(f"API Error: {response.status_code} - {response.text}")
+            except Exception as e:
+                st.error(f"Failed to connect to API: {e}")
+
+with tab_graph:
+    st.header("Interactive Knowledge Graph")
+    st.markdown("Explore the extracted entities and relationships directly from Neo4j.")
+    
+    if st.button("Refresh Graph"):
+        with st.spinner("Querying Neo4j Database..."):
+            try:
+                # Connect to Neo4j
+                URI = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
+                AUTH = (os.getenv("NEO4J_USERNAME", "neo4j"), os.getenv("NEO4J_PASSWORD", "password"))
                 
-            if response.status_code == 200:
-                answer = ""
-                metrics_html = ""
-                
-                # Streamlit component to update the text as it streams
-                for line in response.iter_lines():
-                    if line:
-                        data = json.loads(line)
-                        if data.get("type") == "token":
-                            answer += data["content"]
-                            message_placeholder.markdown(answer + "▌")
-                        elif data.get("type") == "metrics":
-                            # Final stream payload contains metrics
-                            relevance = data.get("relevance_score", 0.0)
-                            hallucination = data.get("hallucination_score", 0.0)
-                            sources = data.get("sources", [])
-                            
-                            metrics_md = f"\n\n---\n**Metrics:**\n"
-                            metrics_md += f"- Relevance Score: `{relevance:.2f}`\n"
-                            metrics_md += f"- Hallucination Score: `{hallucination:.2f}`\n"
-                            if sources:
-                                metrics_md += f"- Sources: {', '.join([f'`{s[:8]}...`' for s in sources])}\n"
-                            
-                            # Final output without the cursor
-                            message_placeholder.markdown(answer + metrics_md)
-                            st.session_state.messages.append({"role": "assistant", "content": answer + metrics_md})
-                        elif data.get("type") == "error":
-                            st.error(f"Streaming Error: {data.get('content')}")
-            else:
-                st.error(f"API Error: {response.status_code} - {response.text}")
-        except Exception as e:
-            st.error(f"Failed to connect to API: {e}")
+                with GraphDatabase.driver(URI, auth=AUTH) as driver:
+                    # Query limited to 200 nodes for performance
+                    query = """
+                    MATCH (n)-[r]->(m)
+                    RETURN n, r, m
+                    LIMIT 200
+                    """
+                    records, summary, keys = driver.execute_query(query)
+                    
+                    # Build Pyvis Network
+                    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", notebook=False)
+                    
+                    # Obsidian-style physics
+                    net.repulsion(node_distance=150, central_gravity=0.2, spring_length=150, spring_strength=0.05, damping=0.09)
+                    
+                    for record in records:
+                        n = record["n"]
+                        m = record["m"]
+                        r = record["r"]
+                        
+                        n_id = n.element_id
+                        n_label = n.get("name", "Unknown")
+                        m_id = m.element_id
+                        m_label = m.get("name", "Unknown")
+                        r_type = r.type
+                        
+                        # Add nodes
+                        net.add_node(n_id, label=n_label, title=n_label, color="#9D00FF", size=20)
+                        net.add_node(m_id, label=m_label, title=m_label, color="#00BFFF", size=20)
+                        
+                        # Add edges
+                        net.add_edge(n_id, m_id, title=r_type, label=r_type, color="#AAAAAA")
+                        
+                    # Save to HTML file
+                    html_path = "/tmp/graph.html"
+                    net.save_graph(html_path)
+                    
+                    # Render in Streamlit
+                    with open(html_path, "r", encoding="utf-8") as f:
+                        html_content = f.read()
+                        
+                    components.html(html_content, height=650)
+                    
+            except Exception as e:
+                st.error(f"Failed to load graph: {str(e)}")
