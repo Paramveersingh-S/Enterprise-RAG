@@ -58,6 +58,14 @@ graph TD
     H -->|Pass: High Score| Z[Final Answer + Sources]
 ```
 
+## 🖥️ User Interface
+
+The platform provides a modern, responsive web application for seamless document ingestion and graph exploration.
+
+| Document Ingestion | Interactive Knowledge Graph |
+| :---: | :---: |
+| <img src="docs/Screenshot%20(616).png" width="400" alt="Document Ingestion UI"> | <img src="docs/Screenshot%20(617).png" width="400" alt="Knowledge Graph UI"> |
+
 ## 🚀 Key Features
 
 - **Multi-Format Ingestion**: Parsers for PDF, DOCX, PPTX, XLSX, HTML, and Markdown using `Docling` and `unstructured`.
