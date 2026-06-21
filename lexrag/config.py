@@ -22,9 +22,9 @@ class Settings(BaseSettings):
     groq_temperature: float = 0.0
     groq_max_tokens: int = 2048
 
-    # OLLAMA SETTINGS
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_embedding_model: str = "bge-m3"
+    # HUGGINGFACE SETTINGS
+    huggingface_api_key: str = ""
+    embedding_model: str = "BAAI/bge-m3"
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
 
     # LANGSMITH SETTINGS

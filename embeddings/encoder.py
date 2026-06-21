@@ -2,10 +2,9 @@ import asyncio
 import json
 from typing import Any, List, Optional
 import numpy as np
-import httpx
 from redis.asyncio import Redis
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from lexrag.config import settings
 from lexrag.logger import get_logger
 from lexrag.exceptions import EmbeddingError
@@ -13,22 +12,25 @@ from lexrag.utils.hashing import compute_sha256
 
 logger = get_logger(__name__)
 
-def _before_retry_log(retry_state: Any) -> None:
-    logger.warning("Ollama connection error, retrying...", attempt=retry_state.attempt_number)
-
 class BGEEncoder:
-    """Production-grade embedding pipeline using Ollama."""
+    """Production-grade embedding pipeline using HuggingFace Cloud Inference API."""
     
     def __init__(
         self, 
-        ollama_url: str = settings.ollama_base_url, 
-        model: str = settings.ollama_embedding_model, 
+        api_key: str = settings.huggingface_api_key, 
+        model: str = settings.embedding_model, 
         cache: Optional[Redis] = None
     ) -> None:
-        self.ollama_url = ollama_url
+        if not api_key:
+            logger.warning("HUGGINGFACE_API_KEY is not set. Embedding calls will fail.")
+            
         self.model = model
         self.cache = cache
-        self.client = httpx.AsyncClient(timeout=120.0)
+        
+        self.hf_embeddings = HuggingFaceInferenceAPIEmbeddings(
+            api_key=api_key,
+            model_name=self.model,
+        )
         
     async def encode(self, texts: List[str]) -> np.ndarray:
         """Encode a list of strings into a numpy array of dense embeddings."""
@@ -55,21 +57,28 @@ class BGEEncoder:
             cache_misses = texts
             cache_miss_indices = list(range(len(texts)))
             
-        # 2. Batch encode cache misses
-        batch_size = 32
-        for i in range(0, len(cache_misses), batch_size):
-            batch_texts = cache_misses[i:i+batch_size]
-            batch_indices = cache_miss_indices[i:i+batch_size]
+        # 2. Batch encode cache misses using LangChain wrapper
+        if cache_misses:
+            try:
+                # Langchain currently doesn't have true async for HF API, so we run in threadpool
+                loop = asyncio.get_event_loop()
+                embeddings = await loop.run_in_executor(
+                    None, 
+                    self.hf_embeddings.embed_documents, 
+                    cache_misses
+                )
+            except Exception as e:
+                logger.error("Failed to generate embeddings from HuggingFace", error=str(e))
+                raise EmbeddingError(f"HuggingFace embedding failed: {str(e)}")
             
-            embeddings = await self._call_ollama_batch(batch_texts)
-            
-            # 5. Store new embeddings in Redis and reconstruct
+            # 3. Store new embeddings in Redis and reconstruct
             for j, emb in enumerate(embeddings):
                 # L2 Normalization
                 norm = np.linalg.norm(emb)
-                normalized_emb = emb / norm if norm > 0 else emb
+                normalized_emb = np.array(emb, dtype=np.float32)
+                normalized_emb = normalized_emb / norm if norm > 0 else normalized_emb
                 
-                orig_idx = batch_indices[j]
+                orig_idx = cache_miss_indices[j]
                 results[orig_idx] = normalized_emb
                 
                 # Assert dimension
@@ -79,31 +88,14 @@ class BGEEncoder:
                     )
                 
                 if self.cache:
-                    text_hash = compute_sha256(batch_texts[j])[:16]
+                    text_hash = compute_sha256(cache_misses[j])[:16]
                     cache_key = f"embedding_cache:{text_hash}"
-                    # 7 days TTL (604800 seconds)
+                    # 7 days TTL
                     await self.cache.setex(cache_key, 604800, json.dumps(normalized_emb.tolist()))
                     
-        # All items should be filled now
         final_results = [r for r in results if r is not None]
         return np.array(final_results, dtype=np.float32)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=8),
-        retry=retry_if_exception_type((httpx.ConnectError, httpx.ReadTimeout)),
-        before_sleep=_before_retry_log
-    )
-    async def _call_ollama_batch(self, batch: List[str]) -> List[np.ndarray]:
-        logger.debug("Calling Ollama API for batch", batch_size=len(batch))
-        response = await self.client.post(
-            f"{self.ollama_url}/api/embed",
-            json={"model": self.model, "input": batch}
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [np.array(e, dtype=np.float32) for e in data.get("embeddings", [])]
-
     async def close(self) -> None:
-        """Close the internal HTTP client."""
-        await self.client.aclose()
+        """Cleanup resources."""
+        pass
