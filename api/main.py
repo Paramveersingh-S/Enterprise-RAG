@@ -27,7 +27,7 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1")
 
 # Setup Prometheus metrics before startup
-Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
+# Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
 
 @app.on_event("startup")
 async def startup_event():
