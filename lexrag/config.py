@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # HUGGINGFACE SETTINGS
     huggingface_api_key: str = ""
     embedding_model: str = "BAAI/bge-m3"
-    reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # LANGSMITH SETTINGS
     langchain_tracing_v2: str = "false"
