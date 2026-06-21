@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 # Initialize LLM with Groq's fast Llama 3.1
 llm = ChatGroq(
-    model_name=settings.groq_model,
+    model_name=settings.groq_model_name,
     api_key=settings.groq_api_key,
     temperature=0.0,
     max_retries=3
