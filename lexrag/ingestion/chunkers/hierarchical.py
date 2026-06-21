@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 
-from llama_index.core.node_parser import HierarchicalNodeParser
+from llama_index.core.node_parser import HierarchicalNodeParser, get_leaf_nodes
 from llama_index.core.schema import Document as LlamaDocument
 
 from lexrag.ingestion.parsers.base import ParsedDocument
@@ -27,7 +27,7 @@ class HierarchicalChunker(BaseChunker):
         llama_doc = LlamaDocument(text=document.content, id_=doc_id)
         nodes = self.node_parser.get_nodes_from_documents([llama_doc])
         
-        leaf_nodes = self.node_parser.get_leaf_nodes(nodes)
+        leaf_nodes = get_leaf_nodes(nodes)
         parent_nodes = {n.node_id: n for n in nodes if n not in leaf_nodes}
         
         chunks = []
