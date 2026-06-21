@@ -34,7 +34,10 @@ dependencies = [
     "structlog>=24.1.0",
     "rapidfuzz>=3.0.0",
     "langgraph>=0.0.60",
-    "langchain-groq>=0.1.0"
+    "langchain-groq>=0.1.0",
+    "ragas>=0.1.0",
+    "datasets>=2.0.0",
+    "mlflow>=2.0.0"
 ]
 
 [project.optional-dependencies]
