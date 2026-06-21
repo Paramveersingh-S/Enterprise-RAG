@@ -68,8 +68,7 @@ def ingest_documents_task(self, file_paths: list[str]):
                         
                 logger.info("Generating embeddings...")
                 texts = [c.text for c in chunks]
-                dense_embeddings = await dual_encoder.encoder.encode(texts)
-                sparse_embeddings = dual_encoder.encode_sparse(texts)
+                dense_embeddings, sparse_embeddings = await dual_encoder.encode(texts)
                 
                 logger.info("Upserting to Qdrant...")
                 await vector_store.upsert_chunks(chunks, dense_embeddings, sparse_embeddings)
