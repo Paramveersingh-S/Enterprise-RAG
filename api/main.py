@@ -26,10 +26,12 @@ app.add_middleware(
 # Include application routes
 app.include_router(router, prefix="/api/v1")
 
+# Setup Prometheus metrics before startup
+Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting LexRAG API", version="1.0.0")
-    Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
     
 @app.get("/health")
 async def health_check():
