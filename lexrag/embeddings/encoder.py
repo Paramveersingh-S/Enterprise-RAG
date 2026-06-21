@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 import numpy as np
 from redis.asyncio import Redis
 
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from lexrag.config import settings
 from lexrag.logger import get_logger
 from lexrag.exceptions import EmbeddingError
@@ -27,9 +27,9 @@ class BGEEncoder:
         self.model = model
         self.cache = cache
         
-        self.hf_embeddings = HuggingFaceInferenceAPIEmbeddings(
-            api_key=api_key,
-            model_name=self.model,
+        self.hf_embeddings = HuggingFaceEndpointEmbeddings(
+            huggingfacehub_api_token=api_key,
+            model=self.model,
         )
         
     async def encode(self, texts: List[str]) -> np.ndarray:
