@@ -77,6 +77,13 @@ graph TD
 - **Embedding & NLP**: BGE-M3 (via Ollama REST), spaCy (`en_core_web_lg`), FlagEmbedding (Cross-Encoders)
 - **Monitoring**: Prometheus, MLflow, Structlog
 
+## 📈 Recent Achievements
+During the development of this project, we successfully accomplished the following key milestones:
+- **Full Backend Pipeline Implementation**: Wired up the asynchronous Celery background workers to execute end-to-end processing (Parsing -> Chunking -> Graph Extraction -> Dual Encoding -> Database Upserts) without blocking the FastAPI endpoints.
+- **Hugging Face Model Migration**: Upgraded from the deprecated LangChain community APIs to the modern `langchain-huggingface` architecture, ensuring stable, reliable inference against the `BAAI/bge-m3` endpoint.
+- **LlamaIndex Compatibility Overhaul**: Implemented dynamic lazy-loading in our `ChunkerFactory` to gracefully bypass upstream breaking changes in `llama-index` while preserving our custom hierarchical chunking mechanisms.
+- **Infrastructure Stability**: Resolved local Docker networking issues and Codespace disk space constraints to guarantee reliable, scalable deployments.
+
 ## ⚙️ Quickstart
 
 ### 1. Prerequisites
