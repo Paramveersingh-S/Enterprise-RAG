@@ -1,7 +1,7 @@
 import asyncio
 import time
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Any
 
 from lexrag.logger import get_logger
 
