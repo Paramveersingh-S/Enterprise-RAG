@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from lexrag.config import settings
 from lexrag.logger import get_logger
@@ -28,6 +29,7 @@ app.include_router(router, prefix="/api/v1")
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting LexRAG API", version="1.0.0")
+    Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
     
 @app.get("/health")
 async def health_check():

@@ -40,7 +40,8 @@ dependencies = [
     "mlflow>=2.0.0",
     "fastapi>=0.109.0",
     "uvicorn>=0.27.0",
-    "celery>=5.3.6"
+    "celery>=5.3.6",
+    "prometheus-fastapi-instrumentator>=6.1.0"
 ]
 
 [project.optional-dependencies]
