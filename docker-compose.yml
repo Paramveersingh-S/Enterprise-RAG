@@ -34,6 +34,8 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - ./:/app
     depends_on:
       - qdrant
       - neo4j
@@ -44,6 +46,8 @@ services:
 
   worker:
     build: .
+    volumes:
+      - ./:/app
     depends_on:
       - redis
     env_file:
