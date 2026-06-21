@@ -1,0 +1,10 @@
+.env
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+enterprise_rag_build_prompt.md
+lexrag_failures.db
+*.db
