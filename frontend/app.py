@@ -69,31 +69,42 @@ if prompt := st.chat_input("What are the key terms mentioned in the document?"):
         message_placeholder = st.empty()
         
         try:
-            # Note: Phase 2 will update this to use streaming API
             with st.spinner("Searching Knowledge Graph & Vector DB..."):
                 response = requests.post(
-                    f"{API_URL}/query",
+                    f"{API_URL}/query_stream",
                     json={"query": prompt},
+                    stream=True,
                     timeout=60
                 )
                 
             if response.status_code == 200:
-                data = response.json()
-                answer = data.get("answer", "No answer found.")
-                sources = data.get("sources", [])
-                relevance = data.get("relevance_score", 0.0)
-                hallucination = data.get("hallucination_score", 0.0)
+                answer = ""
+                metrics_html = ""
                 
-                # Format output
-                output_md = f"{answer}\n\n"
-                output_md += f"---\n**Metrics:**\n"
-                output_md += f"- Relevance Score: `{relevance:.2f}`\n"
-                output_md += f"- Hallucination Score: `{hallucination:.2f}`\n"
-                if sources:
-                    output_md += f"- Sources: {', '.join([f'`{s[:8]}...`' for s in sources])}\n"
-                
-                message_placeholder.markdown(output_md)
-                st.session_state.messages.append({"role": "assistant", "content": output_md})
+                # Streamlit component to update the text as it streams
+                for line in response.iter_lines():
+                    if line:
+                        data = json.loads(line)
+                        if data.get("type") == "token":
+                            answer += data["content"]
+                            message_placeholder.markdown(answer + "▌")
+                        elif data.get("type") == "metrics":
+                            # Final stream payload contains metrics
+                            relevance = data.get("relevance_score", 0.0)
+                            hallucination = data.get("hallucination_score", 0.0)
+                            sources = data.get("sources", [])
+                            
+                            metrics_md = f"\n\n---\n**Metrics:**\n"
+                            metrics_md += f"- Relevance Score: `{relevance:.2f}`\n"
+                            metrics_md += f"- Hallucination Score: `{hallucination:.2f}`\n"
+                            if sources:
+                                metrics_md += f"- Sources: {', '.join([f'`{s[:8]}...`' for s in sources])}\n"
+                            
+                            # Final output without the cursor
+                            message_placeholder.markdown(answer + metrics_md)
+                            st.session_state.messages.append({"role": "assistant", "content": answer + metrics_md})
+                        elif data.get("type") == "error":
+                            st.error(f"Streaming Error: {data.get('content')}")
             else:
                 st.error(f"API Error: {response.status_code} - {response.text}")
         except Exception as e:
