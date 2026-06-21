@@ -71,7 +71,8 @@ class Neo4jGraphStore:
         tgt_name = await self._disambiguate(relation.target)
         
         query = """
-        MATCH (a:Entity {name: $from_name}), (b:Entity {name: $to_name})
+        MATCH (a:Entity {name: $from_name})
+        MATCH (b:Entity {name: $to_name})
         MERGE (a)-[r:RELATED_TO {type: $rel_type}]->(b)
         ON CREATE SET r.contexts = [$context]
         ON MATCH SET r.contexts = CASE WHEN $context IN r.contexts THEN r.contexts ELSE r.contexts + [$context] END
