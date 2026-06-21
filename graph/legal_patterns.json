@@ -1,0 +1,8 @@
+[
+  {"label": "CONTRACT_PARTY", "pattern": [{"LOWER": "party"}, {"IS_ALPHA": true, "LENGTH": 1}]},
+  {"label": "CONTRACT_PARTY", "pattern": [{"LOWER": "the"}, {"LOWER": "client"}]},
+  {"label": "CONTRACT_PARTY", "pattern": [{"LOWER": "the"}, {"LOWER": "vendor"}]},
+  {"label": "LAW", "pattern": [{"LOWER": "section"}, {"LIKE_NUM": true}]},
+  {"label": "LAW", "pattern": [{"LOWER": "exhibit"}, {"IS_ALPHA": true, "LENGTH": 1}]},
+  {"label": "LAW", "pattern": [{"LOWER": "schedule"}, {"LIKE_NUM": true}]}
+]
