@@ -14,7 +14,10 @@ WORKDIR /app
 
 COPY . .
 
-# Install dependencies via pyproject.toml
+# Install CPU-only PyTorch first to save ~3GB of Docker image space (prevents 'no space left' in Codespaces)
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Install the rest of the project dependencies
 RUN pip install --no-cache-dir .
 
 # Download spacy model for NER
