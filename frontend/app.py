@@ -133,7 +133,8 @@ with tab_graph:
                 with GraphDatabase.driver(URI, auth=AUTH) as driver:
                     # Query limited to 200 nodes for performance
                     query = """
-                    MATCH (n)-[r]->(m)
+                    MATCH (n)
+                    OPTIONAL MATCH (n)-[r]->(m)
                     RETURN n, r, m
                     LIMIT 200
                     """
@@ -147,21 +148,20 @@ with tab_graph:
                     
                     for record in records:
                         n = record["n"]
-                        m = record["m"]
-                        r = record["r"]
-                        
                         n_id = n.element_id
                         n_label = n.get("name", "Unknown")
-                        m_id = m.element_id
-                        m_label = m.get("name", "Unknown")
-                        r_type = r.type
-                        
-                        # Add nodes
                         net.add_node(n_id, label=n_label, title=n_label, color="#9D00FF", size=20)
-                        net.add_node(m_id, label=m_label, title=m_label, color="#00BFFF", size=20)
                         
-                        # Add edges
-                        net.add_edge(n_id, m_id, title=r_type, label=r_type, color="#AAAAAA")
+                        m = record["m"]
+                        if m is not None:
+                            m_id = m.element_id
+                            m_label = m.get("name", "Unknown")
+                            net.add_node(m_id, label=m_label, title=m_label, color="#00BFFF", size=20)
+                            
+                        r = record["r"]
+                        if r is not None and m is not None:
+                            r_type = r.type
+                            net.add_edge(n_id, m_id, title=r_type, label=r_type, color="#AAAAAA")
                         
                     # Save to HTML file
                     html_path = "/tmp/graph.html"
