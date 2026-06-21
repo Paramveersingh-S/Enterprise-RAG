@@ -44,7 +44,9 @@ dependencies = [
     "celery>=5.3.6",
     "prometheus-fastapi-instrumentator>=6.1.0",
     "langchain-community>=0.0.10",
-    "langchain-huggingface>=0.1.0"
+    "langchain-huggingface>=0.1.0",
+    "streamlit>=1.31.0",
+    "requests>=2.31.0"
 ]
 
 [project.optional-dependencies]

@@ -54,6 +54,18 @@ services:
       - .env
     command: celery -A api.worker.celery_app worker --loglevel=info
 
+  frontend:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/app
+    depends_on:
+      - api
+    env_file:
+      - .env
+    command: streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0
+
 volumes:
   qdrant_data:
   neo4j_data:
