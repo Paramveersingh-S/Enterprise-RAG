@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://
 # Install the rest of the project dependencies
 RUN pip install --no-cache-dir .
 
-# Download spacy model for NER
-RUN python -m spacy download en_core_web_lg
+# Download small spacy model for NER to save ~800MB of space
+RUN python -m spacy download en_core_web_sm
 
 ENV PYTHONPATH=/app
 

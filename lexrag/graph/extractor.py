@@ -37,12 +37,12 @@ class EntityRelationExtractor:
     
     def __init__(self) -> None:
         try:
-            self.nlp = spacy.load("en_core_web_lg")
+            self.nlp = spacy.load("en_core_web_sm")
         except OSError:
-            logger.warning("en_core_web_lg not found, attempting to download...")
+            logger.warning("en_core_web_sm not found, attempting to download...")
             from spacy.cli import download
-            download("en_core_web_lg")
-            self.nlp = spacy.load("en_core_web_lg")
+            download("en_core_web_sm")
+            self.nlp = spacy.load("en_core_web_sm")
             
         # Add legal patterns
         ruler_path = Path(__file__).parent / "legal_patterns.json"
