@@ -1,109 +1,138 @@
 <div align="center">
+  <img src="https://img.icons8.com/color/96/000000/network.png" alt="Logo" width="80"/>
+  <h1>Enterprise Graph RAG Architecture</h1>
+  <p>A production-ready Retrieval-Augmented Generation (RAG) system combining Dense Vector Search, Sparse BM25 Retrieval, and Knowledge Graphs powered by LangGraph.</p>
 
-# LexRAG — Enterprise Legal Document Intelligence Platform
-
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Qdrant](https://img.shields.io/badge/Qdrant-Vector%20DB-EF3D54)](https://qdrant.tech/)
-[![Neo4j](https://img.shields.io/badge/Neo4j-Graph%20DB-018bff)](https://neo4j.com/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-orange)](https://python.langchain.com/docs/langgraph)
-[![Groq](https://img.shields.io/badge/Groq-LLM-f55036)](https://groq.com/)
-[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-
-An enterprise-grade Retrieval-Augmented Generation (RAG) system built from scratch, demonstrating deep mastery of the modern AI stack with hybrid search, graph reasoning, and production observability.
-
+  <p>
+    <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python" />
+    <img src="https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/Neo4j-018bff?style=flat&logo=neo4j&logoColor=white" alt="Neo4j" />
+    <img src="https://img.shields.io/badge/Qdrant-f90052?style=flat&logo=qdrant&logoColor=white" alt="Qdrant" />
+    <img src="https://img.shields.io/badge/LangGraph-1C1C1C?style=flat&logo=langchain" alt="LangGraph" />
+    <img src="https://img.shields.io/badge/Celery-37814A?style=flat&logo=celery&logoColor=white" alt="Celery" />
+    <img src="https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white" alt="Redis" />
+    <img src="https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white" alt="Docker" />
+    <img src="https://img.shields.io/badge/Prometheus-E6522C?style=flat&logo=prometheus&logoColor=white" alt="Prometheus" />
+  </p>
 </div>
 
-## 🏗️ Architecture
+## 📌 Architecture Overview
+
+This repository implements a highly sophisticated **Hybrid Graph RAG** engine. It mitigates LLM hallucination and improves retrieval accuracy for enterprise compliance and legal documents by combining the structural relationships of a Knowledge Graph with the semantic understanding of Vector embeddings.
+
+### Flow Diagram
 
 ```mermaid
 graph TD
-    %% Ingestion Pipeline
-    subgraph Ingestion["Document Ingestion Pipeline"]
-        Doc[Documents PDF/Word/HTML] --> Parsers[Multi-modal Parsers Unstructured / Docling]
-        Parsers --> Dedup[Redis Deduplication]
-        Dedup --> Chunkers[Hierarchical / Semantic Chunkers]
+    %% Styling
+    classDef llm fill:#2b2b2b,stroke:#00ffcc,stroke-width:2px,color:#fff;
+    classDef store fill:#1c3144,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef process fill:#3f3f46,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    
+    A[User Query] -->|REST API| B(FastAPI)
+    B -->|LangGraph State| C{Retrieve Node}
+    
+    subgraph Ingestion Pipeline
+        I1[Raw Documents] --> I2[Docling / Unstructured]
+        I2 --> I3[Hierarchical / Semantic Chunking]
+        I3 --> I4[Entity & Relation Extractor <br/>spaCy NER]
+        I3 --> I5[Dual Encoder <br/>BGE-M3 Dense + Sparse]
     end
-
-    %% Embedding & Indexing
-    subgraph Indexing["Embedding & Indexing"]
-        Chunkers --> Embed[BGE-M3 Dual Encoder via Ollama]
-        Embed --> Dense[Dense Vectors]
-        Embed --> Sparse[Sparse Vectors BM25]
-        Dense --> Qdrant[(Qdrant Vector DB)]
-        Sparse --> Qdrant
-        
-        Chunkers --> NER[spaCy Entity Extractor]
-        NER --> Neo4j[(Neo4j Graph DB)]
-    end
-
-    %% Retrieval & Orchestration
-    subgraph Orchestration["Agentic Orchestration (LangGraph)"]
-        Query[User Query] --> Analyze[Query Analysis Node]
-        Analyze --> HSearch[Hybrid Vector Search RRF]
-        Analyze --> GSearch[Graph Entity Search]
-        
-        HSearch --> Qdrant
-        GSearch --> Neo4j
-        
-        Qdrant --> Rerank[Cross-Encoder Reranker]
-        Neo4j --> Rerank
-        
-        Rerank --> Gen[LLM Generation Node Groq]
-        Gen --> Validate[Validation Node]
-        Validate --"Fail"--> Analyze
-        Validate --"Pass"--> Output[Final Answer + Citations]
-    end
-
-    %% Observability
-    subgraph Observability["Observability"]
-        Orchestration -.-> Phoenix[Arize Phoenix]
-        Orchestration -.-> LangSmith[LangSmith]
-        Orchestration -.-> Grafana[Grafana Metrics]
-    end
+    
+    I4 -->|Upsert| DB1[(Neo4j Graph)]:::store
+    I5 -->|Upsert| DB2[(Qdrant Vector)]:::store
+    
+    C -->|Hybrid Search + RRF| DB2
+    C -->|Extract Query Entities| D{Graph Fetch Node}
+    D -->|Neighborhood Hop| DB1
+    
+    D -->|Context Merged| E{Generate Node}
+    E -->|Prompt LLM| F[Llama 3.1 / Groq]:::llm
+    
+    F -->|Draft Answer| G{Evaluate Node}
+    G -->|Judge LLM| H{Quality Check}
+    
+    H -->|Fail: Hallucination/Low Relevance| R[Rewrite Query Node]
+    R --> C
+    
+    H -->|Pass: High Score| Z[Final Answer + Sources]
 ```
 
-## ✨ Enterprise Features
+## 🚀 Key Features
 
-- **Robust Ingestion**: Handles native PDFs, scanned PDFs (OCR fallback), Word, Excel, PowerPoint, and HTML. Includes Redis-based deduplication and SQLite failure logging.
-- **Advanced Chunking**: Hierarchical (small-to-big) and semantic chunking using `tiktoken` for accurate token limits.
-- **Hybrid Search**: Combines dense embeddings and BM25 sparse vectors using Reciprocal Rank Fusion (RRF).
-- **Graph RAG**: Extracts entities and relationships via spaCy into Neo4j for multi-hop reasoning.
-- **Cross-Encoder Re-ranking**: Uses BGE Reranker v2 to dramatically improve precision on the top-20 retrieved chunks.
-- **Agentic Orchestration**: LangGraph-based state machine that self-corrects and iterates on ambiguous queries.
-- **Production Observability**: Full OpenTelemetry tracing with Arize Phoenix, LangSmith, and Prometheus/Grafana metrics.
+- **Multi-Format Ingestion**: Parsers for PDF, DOCX, PPTX, XLSX, HTML, and Markdown using `Docling` and `unstructured`.
+- **Intelligent Chunking**: Employs Hierarchical, Semantic (BGE-Small), and Sentence-Window strategies with Token limit adherence (`tiktoken`).
+- **Dual-Encoder Hybrid Retrieval**: Fuses dense semantic search (Ollama BGE-M3) with sparse token retrieval (BM25 equivalents), reranked via Reciprocal Rank Fusion (RRF).
+- **Cross-Encoder Re-ranking**: Uses `BAAI/bge-reranker-v2-m3` via `sentence_transformers` to drastically improve top-K context precision.
+- **Graph RAG Layer**: Uses `spaCy` to construct a Knowledge Graph in Neo4j, enabling multi-hop logical relationship extraction (e.g., matching Contract Parties and Laws).
+- **Agentic Orchestration**: Driven by `LangGraph`, featuring self-reflection, LLM-as-a-judge evaluation, and automatic query rewriting on failure.
+- **Asynchronous Processing**: Non-blocking FastAPI backend offloads heavy document ingestion to `Celery` & `Redis`.
+- **Observability**: Programmatic `Ragas` & `MLflow` evaluation suite, alongside `Prometheus` endpoint telemetry and `structlog` JSON logs.
 
-## 🚀 Quick Start
+## 🛠️ Technical Stack
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Paramveersingh-S/Enterprise-RAG.git
-   cd Enterprise-RAG
-   ```
+- **Orchestration**: LangGraph, LangChain
+- **APIs & Async Workers**: FastAPI, Uvicorn, Celery
+- **Databases**: Qdrant (Vector), Neo4j (Graph), Redis (Cache & Broker)
+- **Embedding & NLP**: BGE-M3 (via Ollama REST), spaCy (`en_core_web_lg`), FlagEmbedding (Cross-Encoders)
+- **Monitoring**: Prometheus, MLflow, Structlog
 
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env to add your GROQ_API_KEY
-   ```
+## ⚙️ Quickstart
 
-3. **Start the infrastructure**
-   ```bash
-   docker compose up -d
-   ```
+### 1. Prerequisites
+Ensure you have Docker and Docker Compose installed. You will also need Groq API credentials for the LLM.
 
-4. **Install dependencies and bootstrap**
-   ```bash
-   make install-dev
-   # Bootstrap commands will be run in later phases
-   ```
+### 2. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+# LLM Configuration
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL_NAME=llama-3.1-70b-versatile
 
-## 🛠️ Tech Stack
+# Vector Store
+QDRANT_HOST=qdrant
+QDRANT_PORT=6333
 
-- **Vector Database**: Qdrant
-- **Graph Database**: Neo4j Community
-- **Embeddings**: BGE-M3 (via Ollama local)
-- **LLM**: Groq API (Llama 3.1 70B)
-- **Orchestration**: LangGraph & LlamaIndex
-- **API**: FastAPI, Celery, Redis
-- **Evaluation**: RAGAS & DeepEval
+# Graph Store
+NEO4J_URI=bolt://neo4j:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=password
+
+# Embeddings & Backend
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+REDIS_URL=redis://redis:6379/0
+ENVIRONMENT=production
+```
+
+### 3. Deploy Stack
+Bring up the entire stack using Docker Compose:
+```bash
+docker-compose up -d --build
+```
+This deploys the API, Celery Workers, Redis, Qdrant, Neo4j, and Prometheus.
+
+### 4. API Endpoints
+
+- **Ingest Documents**:
+  ```bash
+  curl -X POST http://localhost:8000/api/v1/ingest \
+       -H "Content-Type: application/json" \
+       -d '{"file_paths": ["/app/tests/fixtures/sample_docs/sample_pdf.pdf"]}'
+  ```
+- **Query the RAG**:
+  ```bash
+  curl -X POST http://localhost:8000/api/v1/query \
+       -H "Content-Type: application/json" \
+       -d '{"query": "What are the termination conditions for the Vendor in Exhibit B?"}'
+  ```
+
+## 📊 Evaluation & Metrics
+Run the programmatic evaluation suite to test precision against a ground-truth dataset:
+```bash
+python -m lexrag.evaluation.runner --testset ./data/eval_testset.jsonl
+```
+Metrics (Faithfulness, Context Precision, Answer Relevance) are tracked automatically in local **MLflow**.
+System metrics are exposed for scraping at `http://localhost:8000/metrics`.
+
+---
+*Built for extreme reliability, compliance extraction, and zero-hallucination enterprise environments.*
